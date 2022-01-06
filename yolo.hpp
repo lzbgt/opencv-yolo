@@ -37,11 +37,10 @@ class YoloDectect {
    private:
     // Initialize the parameters
     const string selfId = "ObjectDetector";
-    float confThreshold = 0.1f;  // Confidence threshold
-    float nmsThreshold = 0.2f;   // Non-maximum suppression threshold
+    float confThreshold = 0.2f;  // Confidence threshold
     int inpWidth = 416;          // Width of network's input image
     int inpHeight = 416;         // Height of network's input image
-    int gapSeconds = 4;
+    int gapSeconds = 8;
     vector<string> classes;
     Net net;
     Mat blob;
@@ -53,8 +52,7 @@ class YoloDectect {
     bool cmdStop = false;
     unsigned int wrapNum = 0;
     unsigned int numLogSkip = 0;
-    bool bHumanOnly = false;
-    bool bContinue = true;
+    bool bVerbose = false;
     int cameNo = -1;
 
     // Get the names of the output layers
@@ -91,18 +89,63 @@ class YoloDectect {
                 // Get the value and location of the maximum score
                 minMaxLoc(scores, 0, &confidence, 0, &classIdPoint);
                 if (confidence > confThreshold) {
+                    // person
                     if (classIdPoint.x == 0) {
                         found = true;
-                        break;
+                        if (bVerbose) {
+                            int centerX = (int)(data[0] * frame.cols);
+                            int centerY = (int)(data[1] * frame.rows);
+                            int width = (int)(data[2] * frame.cols);
+                            int height = (int)(data[3] * frame.rows);
+                            int left = centerX - width / 2;
+                            int top = centerY - height / 2;
+
+                            classIds.push_back(classIdPoint.x);
+                            confidences.push_back((float)confidence);
+                            boxes.push_back(Rect(left, top, width, height));
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
-            if (found) {
+
+            if (found && !bVerbose) {
                 break;
             }
         }
 
+        if (found && bVerbose) {
+            vector<int> indices;
+            NMSBoxes(boxes, confidences, confThreshold, 0.2, indices);
+            vector<tuple<string, double, Rect>> ret;
+            for (size_t i = 0; i < indices.size(); ++i) {
+                int idx = indices[i];
+                Rect box = boxes[idx];
+                drawPred(classIds[idx], confidences[idx], box.x, box.y, box.x + box.width, box.y + box.height, frame);
+            }
+        }
+
         return found;
+    }
+
+    void drawPred(int classId, float conf, int left, int top, int right, int bottom, Mat& frame) {
+        // draw a rectangle displaying the bounding box
+        rectangle(frame, Point(left, top), Point(right, bottom), Scalar(255, 178, 50), 3);
+
+        //get the label for the class name and its confidence
+        string label = format("%.2f", conf);
+        if (!classes.empty()) {
+            CV_Assert(classId < (int)classes.size());
+            label = classes[classId] + ":" + label;
+        }
+
+        // display the label at the top of the bounding box
+        int baseLine;
+        Size labelSize = getTextSize(label, FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseLine);
+        top = max(top, labelSize.height);
+        rectangle(frame, Point(left, top - round(1.5 * labelSize.height)), Point(left + round(1.5 * labelSize.width), top + baseLine), Scalar(255, 255, 255), FILLED);
+        putText(frame, label, Point(left, top), FONT_HERSHEY_SIMPLEX, 0.75, Scalar(0, 0, 0), 1);
     }
 
     //
@@ -110,14 +153,14 @@ class YoloDectect {
     //
    public:
     typedef int (*callback)(vector<tuple<string, double, Rect>>&, Mat);
-    YoloDectect(string path = ".", int gapSeconds = 4, bool _humanOnly = true, float confThresh = 0.1, bool _bContinue = true, unsigned int _wrapNum = 10, unsigned int _numLogSkip = 380) {
+    YoloDectect(string path = ".", int gapSeconds = 8, bool verbose = false, float confThresh = 0.2, bool _bContinue = true, unsigned int _wrapNum = 10, unsigned int _numLogSkip = 380) {
         if (path.empty()) {
             path = ".";
         }
 
-        bHumanOnly = _humanOnly;
-        bContinue = _bContinue;
+        bVerbose = _bContinue;
         this->gapSeconds = gapSeconds;
+        this->bVerbose = verbose;
 
         confThreshold = confThresh;
 
@@ -204,7 +247,7 @@ class YoloDectect {
         unsigned long detCnt = 0, skipCnt = 0;
         Mat frame;
         auto lastTs = std::chrono::system_clock::now();
-        while (true) {
+        while (waitKey(1) < 0) {
             if (!cap.isOpened()) {
                 cap.open(cameNo);
             }
@@ -236,16 +279,19 @@ class YoloDectect {
             static bool notified1 = false;
 
             auto deltaS = std::chrono::duration<double>(std::chrono::system_clock::now() - lastTs).count();
-            if (deltaS > 1) {
+            if (deltaS > 2) {
                 if (detCnt > skipCnt && !notified1) {
                     notified1 = true;
                     EventDetection::getInstance().notify(1);
+                    detCnt = 0;
+                    skipCnt = 0;
+                    lastTs = std::chrono::system_clock::now();
                 }
             }
 
             if (deltaS > gapSeconds) {
                 spdlog::debug("{}s", this->gapSeconds);
-                if (detCnt < skipCnt) {
+                if (detCnt < skipCnt && notified1) {
                     notified1 = false;
                     EventDetection::getInstance().notify(0);
                 }
@@ -254,8 +300,14 @@ class YoloDectect {
                 lastTs = std::chrono::system_clock::now();
             }
 
-            frame.release();
-            this_thread::sleep_for(chrono::seconds(1));
+            if (bVerbose) {
+                Mat detectedFrame;
+                frame.convertTo(detectedFrame, CV_8U);
+                imshow("show", detectedFrame);
+            }
+
+            //frame.release();
+            //this_thread::sleep_for(chrono::milliseconds(200));
         }
 
         spdlog::info("{} done processing {}", selfId, inVideoUri);

@@ -55,7 +55,7 @@ class YoloDectect {
     unsigned int wrapNum = 0;
     unsigned int numLogSkip = 0;
     bool bHumanOnly = false;
-    bool bContinue = true;
+    bool bVerbose = true;
     int cameNo = -1;
 
     // Get the names of the output layers
@@ -160,7 +160,7 @@ class YoloDectect {
         }
 
         bHumanOnly = _humanOnly;
-        bContinue = _bContinue;
+        bVerbose = _bContinue;
 
         confThreshold = confThresh;
 
@@ -321,7 +321,7 @@ class YoloDectect {
                                 string ofname = outFileBase + "_person_" + to_string(ms) + ".jpg";
                                 imwrite(ofname, outFrame);
                                 spdlog::info("{} found human {} x: {}, y: {}, w: {}, h: {}; written image: {}", selfId, c, r.x, r.y, r.width, r.height, ofname);
-                                if (!bContinue) {
+                                if (!bVerbose) {
                                     cmdStop = true;
                                     break;
                                 }

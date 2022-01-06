@@ -28,10 +28,10 @@ using namespace dnn;
 using namespace std;
 
 // Initialize the parameters
-float confThreshold = 0.5;  // Confidence threshold
-float nmsThreshold = 0.4;   // Non-maximum suppression threshold
-int inpWidth = 416;         // Width of network's input image
-int inpHeight = 416;        // Height of network's input image
+float confThreshold = 0.23;  // Confidence threshold
+float nmsThreshold = 0.4;    // Non-maximum suppression threshold
+int inpWidth = 416;          // Width of network's input image
+int inpHeight = 416;         // Height of network's input image
 vector<string> classes;
 
 // Remove the bounding boxes with low confidence using non-maxima suppression
@@ -158,14 +158,14 @@ int main(int argc, char** argv) {
         // Write the frame with the detection boxes
         Mat detectedFrame;
         frame.convertTo(detectedFrame, CV_8U);
-        if (parser.has("image")) {
-            string ofname = outputFile + to_string(detCnt) + ".jpg";
-            imwrite(ofname, detectedFrame);
-            detCnt++;
-        } else {
-            video.write(detectedFrame);
-        }
-        //imshow(kWinName, frame);
+        // if (parser.has("image")) {
+        //     string ofname = outputFile + to_string(detCnt) + ".jpg";
+        //     imwrite(ofname, detectedFrame);
+        //     detCnt++;
+        // } else {
+        //     video.write(detectedFrame);
+        // }
+        imshow("show", detectedFrame);
     }
 
     cap.release();
@@ -199,9 +199,11 @@ int postprocess(Mat& frame, const vector<Mat>& outs) {
                 int left = centerX - width / 2;
                 int top = centerY - height / 2;
 
-                classIds.push_back(classIdPoint.x);
-                confidences.push_back((float)confidence);
-                boxes.push_back(Rect(left, top, width, height));
+                if (classIdPoint.x == 0) {
+                    classIds.push_back(classIdPoint.x);
+                    confidences.push_back((float)confidence);
+                    boxes.push_back(Rect(left, top, width, height));
+                }
             }
         }
     }
