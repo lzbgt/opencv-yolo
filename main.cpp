@@ -24,10 +24,12 @@ int main(int argc, char *argv[]) {
     int wrap = 10;
     string sInput, sOutput = "detect.jpg";
     string modelPath = ".";
+    int gapSeconds = 4;
 
     auto cli = (option("-cl") & value("confidence level of detection, default: 0.1", fConfident),
                 option("-vv", "--debug").set(bVerbose).doc("verbose prints"),
                 option("-c", "--config-path") & value("model and configuration path", modelPath),
+                option("-g", "--gap") & value("gap time for idle", gapSeconds),
                 option("-h", "--help").set(help).doc("print this help info"),
                 value("input path", sInput));
 
@@ -41,6 +43,6 @@ int main(int argc, char *argv[]) {
 
     spdlog::set_level(spdlog::level::debug);
 
-    YoloDectect detector(modelPath, bHumanOnly == "true" ? true : false, fConfident, bCont, wrap);
+    YoloDectect detector(modelPath, gapSeconds, bHumanOnly == "true" ? true : false, fConfident, bCont, wrap);
     detector.process(sInput);
 }

@@ -41,6 +41,7 @@ class YoloDectect {
     float nmsThreshold = 0.2f;   // Non-maximum suppression threshold
     int inpWidth = 416;          // Width of network's input image
     int inpHeight = 416;         // Height of network's input image
+    int gapSeconds = 4;
     vector<string> classes;
     Net net;
     Mat blob;
@@ -109,13 +110,14 @@ class YoloDectect {
     //
    public:
     typedef int (*callback)(vector<tuple<string, double, Rect>>&, Mat);
-    YoloDectect(string path = ".", bool _humanOnly = false, float confThresh = 0.1, bool _bContinue = true, unsigned int _wrapNum = 10, unsigned int _numLogSkip = 380) {
+    YoloDectect(string path = ".", int gapSeconds = 4, bool _humanOnly = true, float confThresh = 0.1, bool _bContinue = true, unsigned int _wrapNum = 10, unsigned int _numLogSkip = 380) {
         if (path.empty()) {
             path = ".";
         }
 
         bHumanOnly = _humanOnly;
         bContinue = _bContinue;
+        this->gapSeconds = gapSeconds;
 
         confThreshold = confThresh;
 
@@ -231,16 +233,20 @@ class YoloDectect {
                 detCnt++;
             }
 
+            static bool notified1 = false;
+
             auto deltaS = std::chrono::duration<double>(std::chrono::system_clock::now() - lastTs).count();
-            if (deltaS > 2) {
-                if (detCnt > skipCnt) {
+            if (deltaS > 1) {
+                if (detCnt > skipCnt && !notified1) {
+                    notified1 = true;
                     EventDetection::getInstance().notify(1);
                 }
             }
 
-            if (deltaS > 8) {
-                spdlog::debug("8s");
+            if (deltaS > gapSeconds) {
+                spdlog::debug("{}s", this->gapSeconds);
                 if (detCnt < skipCnt) {
+                    notified1 = false;
                     EventDetection::getInstance().notify(0);
                 }
                 detCnt = 0;
