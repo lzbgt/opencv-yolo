@@ -307,7 +307,7 @@ class YoloDectect {
             }
 
             //frame.release();
-            //this_thread::sleep_for(chrono::milliseconds(200));
+            this_thread::sleep_for(chrono::milliseconds(100));
         }
 
         spdlog::info("{} done processing {}", selfId, inVideoUri);

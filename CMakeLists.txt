@@ -49,7 +49,13 @@ add_executable(${PROJECT_NAME}.origin main.origin.cpp)
 # Link your application with OpenCV libraries
 target_link_libraries(${PROJECT_NAME}.origin PRIVATE ${OpenCV_LIBS})
 
+# Declare the executable tacrget built from your sources
+add_executable(${PROJECT_NAME}.v5 yolov5.cpp) 
+
+# Link your application with OpenCV libraries
+target_link_libraries(${PROJECT_NAME}.v5 PRIVATE ${OpenCV_LIBS})
 
 
-install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}.origin DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_BUILD_TYPE})
+
+install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}.origin ${PROJECT_NAME}.v5 DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_BUILD_TYPE})
 install(IMPORTED_RUNTIME_ARTIFACTS ${OpenCV_LIBS} DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_BUILD_TYPE})
